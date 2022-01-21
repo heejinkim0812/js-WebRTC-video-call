@@ -1,0 +1,22 @@
+{
+  "name": "js-webrtc-video-call",
+  "version": "1.0.0",
+  "description": "ZOOM Clone using NodeJS, WebRTC and Websockets",
+  "license": "ISC",
+  "scripts": {
+    "dev": "nodemon"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.16.8",
+    "@babel/core": "^7.16.10",
+    "@babel/node": "^7.16.8",
+    "@babel/preset-env": "^7.16.11",
+    "nodemon": "^2.0.15"
+  },
+  "dependencies": {
+    "express": "^4.17.2",
+    "pug": "^3.0.2",
+    "socket.io": "^4.4.1",
+    "ws": "^8.4.2"
+  }
+}
