@@ -15,7 +15,11 @@ const httpServer = http.createServer(app);
 const wsServer = SocketIO(httpServer);
 
 wsServer.on("connection", (socket) => {
-
+    socket.on("join_room", (roomName, done) => {
+        socket.join(roomName) //join함수
+        done();
+        socket.to(roomName).emit("welcome"); //"someone joined!" 메세지 
+    });
 });
 const handleListen = () => console.log("Listening on http://localhost:3000");
 httpServer.listen(3000, handleListen); 

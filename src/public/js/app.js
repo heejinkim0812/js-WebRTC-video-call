@@ -4,10 +4,17 @@ const myFace = document.getElementById("myFace");
 const muteBtn = document.getElementById("mute");
 const cameraBtn = document.getElementById("camera");
 const camerasSelect = document.getElementById("cameras");
+const welcome = document.getElementById("welcome");
+const call = document.getElementById("call");
+const welcomeForm = document.querySelector("form");
+const input = welcomeForm.querySelector("input");
 
 let myStream;
 let muted = false; 
 let cameraOff = false;
+let roomName;
+
+call.hidden = true;
 
 async function getCameras(){
     try{
@@ -41,7 +48,7 @@ async function getMedia(deviceId) {
     };
     try {
         myStream = await navigator.mediaDevices.getUserMedia(
-            deviceId? cameraConstraints : initialConstraints
+            deviceId? cameraConstraints : initialConstraints //deviceId 유무 조건
         );
         myFace.srcObject = myStream;
         if (!deviceId) {
@@ -51,7 +58,6 @@ async function getMedia(deviceId) {
         console.log(e);
     }
 }
-getMedia(); 
 
 function handleMuteClick() {
     myStream.getAudioTracks().forEach( (track) => (track.enabled = !track.enabled) ); //상태 반대로 전환
@@ -79,6 +85,24 @@ async function handleCameraChange(){
     await getMedia(camerasSelect.value);
 }
 
+function handleWelcomeSubmit(event){
+    event.preventDefault();
+    socket.emit("join_room", input.value, stratMedia);
+    roomName = input.value;
+    input.value="";
+}
+
+function stratMedia(){
+    welcome.hidden = true;
+    call.hidden = false;
+    getMedia();
+}
+
+socket.on("welcome", () => {
+    console.log("someone joined!");
+})
+
 muteBtn.addEventListener("click", handleMuteClick);
 cameraBtn.addEventListener("click", handleCameraClick);
 camerasSelect.addEventListener("input", handleCameraChange);
+welcomeForm.addEventListener("submit", handleWelcomeSubmit);
