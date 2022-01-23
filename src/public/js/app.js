@@ -13,6 +13,7 @@ let myStream;
 let muted = false; 
 let cameraOff = false;
 let roomName;
+let myPeerConnection;
 
 call.hidden = true;
 
@@ -87,20 +88,37 @@ async function handleCameraChange(){
 
 function handleWelcomeSubmit(event){
     event.preventDefault();
-    socket.emit("join_room", input.value, stratMedia);
+    socket.emit("join_room", input.value, startMedia); // on → emit(구체적)
     roomName = input.value;
     input.value="";
 }
 
-function stratMedia(){
-    welcome.hidden = true;
-    call.hidden = false;
-    getMedia();
+async function startMedia(){
+    welcome.hidden = true; //숨기기
+    call.hidden = false;   //보이기
+    await getMedia();
+    makeConnection();
 }
 
-socket.on("welcome", () => {
-    console.log("someone joined!");
+//Peer A
+socket.on("welcome", async () => {
+    const offer = await myPeerConnection.createOffer(); // 3. createOffer | offer 생성
+    myPeerConnection.setLocalDescription(offer);        // 4. setLocalDescription | offer로 연결구성
+    console.log("sent the offer");
+    socket.emit("offer", offer, roomName);              // 5. Peer B에 offer 전송
 })
+
+//Peer B
+socket.on("offer", (offer) => {
+    console.log(offer);                                 // 6. Peer B offer 받음 → signaling offer 주고받은 이후 P2P 대화가능
+})
+
+
+function makeConnection(){
+    myPeerConnection = new RTCPeerConnection(); // 1. P2P connection 생성
+    myStream.getTracks().forEach( (track) => myPeerConnection.addTrack(track, myStream)); // 2. addStream | (카메라,마이크) 데이터stream 연결에 넣음
+
+}
 
 muteBtn.addEventListener("click", handleMuteClick);
 cameraBtn.addEventListener("click", handleCameraClick);

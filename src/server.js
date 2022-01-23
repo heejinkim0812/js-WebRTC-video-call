@@ -16,10 +16,16 @@ const wsServer = SocketIO(httpServer);
 
 wsServer.on("connection", (socket) => {
     socket.on("join_room", (roomName, done) => {
-        socket.join(roomName) //join함수
-        done();
-        socket.to(roomName).emit("welcome"); //"someone joined!" 메세지 
+        socket.join(roomName)                    // socket.join()
+        done();                                  // startMedia() → makeConnection()
+        socket.to(roomName).emit("welcome");     // Peer A offer 생성후 연결구성 → Peer B에 offer 전송
     });
+
+    // Peer B에 offer 전송
+    socket.on("offer", (offer, roomName) => { 
+        socket.to(roomName).emit("offer", offer) // Peer B offer 받음 → console.log(offer)
+    });
+
 });
 const handleListen = () => console.log("Listening on http://localhost:3000");
 httpServer.listen(3000, handleListen); 
