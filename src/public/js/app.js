@@ -15,12 +15,19 @@ let cameraOff = false;
 let roomName;
 let myPeerConnection;
 
-call.hidden = true;
+const init = () =>{
+    call.hidden = true;
+}
+
+init();
+
+
+/* =================== Toggle Form =================== */
 
 async function getCameras(){
     try{
         const devices = await navigator.mediaDevices.enumerateDevices();
-        const cameras = devices.filter( (device) => (device.kind === "videoinput") ); //videoinput 정보만 추출
+        const cameras = devices.filter( (device) => (device.kind === "videoinput") ); // videoinput 정보만 추출
         const currentCamera = myStream.getVideoTracks()[0];
         cameras.forEach( (camera) => {
             const option = document.createElement("option");
@@ -29,7 +36,7 @@ async function getCameras(){
             if(currentCamera.label === camera.label){
                 option.selected = true;
             }
-            camerasSelect.appendChild(option); //option 그리기
+            camerasSelect.appendChild(option); // option 그리기
         });
     } catch (e) {
         console.log(e);
@@ -60,6 +67,24 @@ async function getMedia(deviceId) {
     }
 }
 
+
+/* =================== CLIENT EVENT =================== */
+
+async function initCall(){
+    welcome.hidden = true; //숨기기
+    call.hidden = false;   //보이기
+    await getMedia();
+    makeConnection();
+}
+
+async function handleWelcomeSubmit(event){
+    event.preventDefault();
+    await initCall();                      // getUserMedia, makeConnection | myStream, P2P connection 생성
+    socket.emit("join_room", input.value); // on(함수) → emit(적용)
+    roomName = input.value;
+    input.value="";
+}
+
 function handleMuteClick() {
     myStream.getAudioTracks().forEach( (track) => (track.enabled = !track.enabled) ); //상태 반대로 전환
     if(!muted) {
@@ -88,54 +113,19 @@ async function handleCameraChange(){
     if(myPeerConnection){
         const videoTrack = myStream.getVideoTracks()[0];
         const videoSender = myPeerConnection.getSenders().find( (sender) => sender.track.kind === "video" ); // Sender: peer에게 보낼 track 컨트롤
-        videoSender.replaceTrack(videoTrack); // video track 바꿔줌(타브라우저 update) 
+        videoSender.replaceTrack(videoTrack); // video track 바꿔 타브라우저에 update 
     }
 }
 
-async function initCall(){
-    welcome.hidden = true; //숨기기
-    call.hidden = false;   //보이기
-    await getMedia();
-    makeConnection();
-}
 
-async function handleWelcomeSubmit(event){
-    event.preventDefault();
-    await initCall();                      // getUserMedia, makeConnection | myStream, P2P connection 생성
-    socket.emit("join_room", input.value); // on(함수) → emit(적용)
-    roomName = input.value;
-    input.value="";
-}
+muteBtn.addEventListener("click", handleMuteClick);
+cameraBtn.addEventListener("click", handleCameraClick);
+camerasSelect.addEventListener("input", handleCameraChange);
+welcomeForm.addEventListener("submit", handleWelcomeSubmit);
 
-//Peer A
-socket.on("welcome", async () => {
-    const offer = await myPeerConnection.createOffer();    // 3. createOffer | offer 생성
-    myPeerConnection.setLocalDescription(offer);           // 4. setLocalDescription | offer로 연결구성
-    socket.emit("offer", offer, roomName);                 // 5. Peer B에 offer 전송
-    console.log("sent the offer");
-}) 
 
-//Peer B
-socket.on("offer", async (offer) => {                       
-    console.log("received the offer");                     // 6. Peer B offer 받음
-    myPeerConnection.setRemoteDescription(offer);          // 7. setRemoteDescription | offer 받아 세팅
-    const answer = await myPeerConnection.createAnswer();  // 8. createAnswer | offer 받고 answer 생성
-    myPeerConnection.setLocalDescription(answer);          // 9. setLocalDescription | answer로 연결구성
-    socket.emit("answer", answer, roomName);               // 10. Peer A에 answer 전송
-    console.log("sent the answer");
-})
 
-//Peer A
-socket.on("answer", async (answer) => {                    
-    console.log("received the answer");                    // 11. Peer A answer 받음 
-    myPeerConnection.setRemoteDescription(answer);          // 12. setRemoteDescription | answer 받아 세팅
-})                                                         //////signaling server(Socket.IO): offer & answer 주고받은 이후 P2P 대화가능//////
-
-// candidate 수신
-socket.on("ice", (ice) => {                          
-    console.log("received candidate");                     // candidate 받음
-    myPeerConnection.addIceCandidate(ice);                 // addIceCandidate event 발생
-})
+/* =================== SOCKET EVENT =================== */
 
 function makeConnection(){
     myPeerConnection = new RTCPeerConnection({                         // 1. P2P connection 생성
@@ -159,18 +149,44 @@ function makeConnection(){
      .forEach( (track) => myPeerConnection.addTrack(track, myStream)); // 2. addStream | (카메라,마이크) 데이터스트림 connection에 넣음
 }
 
-// candidate 발신
+//Peer A
+socket.on("welcome", async () => {
+    const offer = await myPeerConnection.createOffer();    // 3. createOffer | offer 생성
+    myPeerConnection.setLocalDescription(offer);           // 4. setLocalDescription | offer로 연결구성
+    socket.emit("offer", offer, roomName);                 // 5. Peer B에 offer 전송
+    console.log("sent the offer");
+}) 
+
+//Peer B
+socket.on("offer", async (offer) => {                       
+    console.log("received the offer");                     // 6. Peer B offer 받음
+    myPeerConnection.setRemoteDescription(offer);          // 7. setRemoteDescription | offer 받아 세팅
+    const answer = await myPeerConnection.createAnswer();  // 8. createAnswer | offer 받고 answer 생성
+    myPeerConnection.setLocalDescription(answer);          // 9. setLocalDescription | answer로 연결구성
+    socket.emit("answer", answer, roomName);               // 10. Peer A에 answer 전송
+    console.log("sent the answer");
+})
+
+//Peer A
+socket.on("answer", async (answer) => {                    
+    console.log("received the answer");                    // 11. Peer A answer 받음 
+    myPeerConnection.setRemoteDescription(answer);         // 12. setRemoteDescription | answer 받아 세팅
+})                                                         //////signaling server(Socket.IO): offer & answer 주고받은 이후 P2P 대화가능//////
+
+// icecandidate 발생 시 → candidate 발신
 function handleIce(data){ 
     console.log("sent candidate");                         
     socket.emit("ice", data.candidate, roomName);          // candidate 전송 
 }
 
+// candidate 수신
+socket.on("ice", (ice) => {                          
+    console.log("received candidate");                     // candidate 받음
+    myPeerConnection.addIceCandidate(ice);                 // addIceCandidate event 발생
+})
+
+// addstream 발생 시 → stream 주고받음
 function handleAddStream(data){
     const peerFace = document.getElementById("peerFace");
     peerFace.srcObject = data.stream;                      // stream 받음 
 }
-
-muteBtn.addEventListener("click", handleMuteClick);
-cameraBtn.addEventListener("click", handleCameraClick);
-camerasSelect.addEventListener("input", handleCameraChange);
-welcomeForm.addEventListener("submit", handleWelcomeSubmit);

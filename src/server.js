@@ -1,5 +1,4 @@
 import http from "http";
-//import WebSocket from "ws";
 import SocketIO from "socket.io";
 import express from "express";
 
@@ -32,5 +31,6 @@ wsServer.on("connection", (socket) => {
         socket.to(roomName).emit("ice", ice)        // candidate 받음
     })
 });
+
 const handleListen = () => console.log("Listening on http://localhost:3000");
 httpServer.listen(3000, handleListen); 
