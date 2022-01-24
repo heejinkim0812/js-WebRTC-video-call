@@ -1,0 +1,66 @@
+body {
+  background-color: rgb(242, 242, 242);
+}
+
+main {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+}
+
+#welcome {
+  display: flex;
+}
+
+#welcomeForm {
+  display: flex;
+  background-color: white;
+}
+
+#welcomeInput {
+  margin: 8px;
+}
+
+#welcomeBtn {
+  border: rgb(241, 153, 56);
+  background-color: rgb(241, 153, 56);
+}
+
+#myStrem {
+  display: flex;
+}
+
+#myFace {
+  position: relative;
+  top: -50px;
+}
+
+#peerFace {
+  background-image: url("http://www.clker.com/cliparts/C/N/O/F/T/X/blank-profile-md.png");
+  background-size: 500px 375px;
+  background-repeat: no-repeat;
+  background-position: center;
+  position: relative;
+  top: -50px;
+}
+
+#btnDiv {
+  position: relative;
+  top: -70px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#btnDiv > button {
+  width: 30%;
+  border: rgb(241, 153, 56);
+  background-color: rgb(241, 153, 56);
+}
+
+#cameras {
+  position: relative;
+  top: -30px;
+  left: 400px;
+}
