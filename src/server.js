@@ -27,6 +27,10 @@ wsServer.on("connection", (socket) => {
     socket.on("answer", (answer, roomName) => {     // Peer A에 answer 전송
         socket.to(roomName).emit("answer", answer); // Peer A answer 받음
     })
+
+    socket.on("ice", (ice, roomName) => {           // candidate 전송
+        socket.to(roomName).emit("ice", ice)        // candidate 받음
+    })
 });
 const handleListen = () => console.log("Listening on http://localhost:3000");
 httpServer.listen(3000, handleListen); 

@@ -8,6 +8,7 @@ const welcome = document.getElementById("welcome");
 const call = document.getElementById("call");
 const welcomeForm = document.querySelector("form");
 const input = welcomeForm.querySelector("input");
+const peerFace = document.getElementById("peerFace");
 
 let myStream;
 let muted = false; 
@@ -86,14 +87,6 @@ async function handleCameraChange(){
     await getMedia(camerasSelect.value);
 }
 
-async function handleWelcomeSubmit(event){
-    event.preventDefault();
-    await initCall();                      // getUserMedia, makeConnection | P2P connection 생성
-    socket.emit("join_room", input.value); // on → emit(구체화)
-    roomName = input.value;
-    input.value="";
-}
-
 async function initCall(){
     welcome.hidden = true; //숨기기
     call.hidden = false;   //보이기
@@ -101,31 +94,59 @@ async function initCall(){
     makeConnection();
 }
 
+async function handleWelcomeSubmit(event){
+    event.preventDefault();
+    await initCall();                      // getUserMedia, makeConnection | myStream, P2P connection 생성
+    socket.emit("join_room", input.value); // on(함수) → emit(적용)
+    roomName = input.value;
+    input.value="";
+}
+
 //Peer A
 socket.on("welcome", async () => {
     const offer = await myPeerConnection.createOffer();    // 3. createOffer | offer 생성
     myPeerConnection.setLocalDescription(offer);           // 4. setLocalDescription | offer로 연결구성
-    console.log("sent the offer");
     socket.emit("offer", offer, roomName);                 // 5. Peer B에 offer 전송
+    console.log("sent the offer");
 }) 
 
 //Peer B
-socket.on("offer", async (offer) => {                      // 6. Peer B offer 받음 
+socket.on("offer", async (offer) => {                       
+    console.log("received the offer");                     // 6. Peer B offer 받음
     myPeerConnection.setRemoteDescription(offer);          // 7. setRemoteDescription | offer 받아 세팅
     const answer = await myPeerConnection.createAnswer();  // 8. createAnswer | offer 받고 answer 생성
     myPeerConnection.setLocalDescription(answer);          // 9. setLocalDescription | answer로 연결구성
-    console.log("sent the answer");
     socket.emit("answer", answer, roomName);               // 10. Peer A에 answer 전송
+    console.log("sent the answer");
 })
 
 //Peer A
-socket.on("answer", async (answer) => {                    // 11. Peer A answer 받음 
+socket.on("answer", async (answer) => {                    
+    console.log("received the answer");                    // 11. Peer A answer 받음 
     myPeerConnection.setRemoteDescription(offer);          // 12. setRemoteDescription | answer 받아 세팅
-})                                                         //// signaling server(Socket.IO): offer & answer 주고받은 이후 P2P 대화가능 ////
+})                                                         //////signaling server(Socket.IO): offer & answer 주고받은 이후 P2P 대화가능//////
+
+// candidate 수신
+socket.on("ice", async (ice) => {                          
+    console.log("received candidate");                     // candidate 받음
+    myPeerConnection.addIceCandidate(ice);                 // addIceCandidate event 발생
+})
 
 function makeConnection(){
-    myPeerConnection = new RTCPeerConnection();            // 1. P2P connection 생성
-    myStream.getTracks().forEach( (track) => myPeerConnection.addTrack(track, myStream)); // 2. addStream | (카메라,마이크) 데이터stream 연결에 넣음
+    myPeerConnection = new RTCPeerConnection();                      // 1. P2P connection 생성
+    myPeerConnection.addEventListener("icecandidate", handleIce);    // icecandidate event 발생 | candidate(소통방식) 주고받음
+    myPeerConnection.addEventListener("addstream", handleAddStream); // addstream evnet 발생 | stream 주고받음
+    myStream.getTracks().forEach( (track) => myPeerConnection.addTrack(track, myStream)); // 2. addStream | (카메라,마이크)데이터스트림 연결에 넣음
+}
+
+// candidate 발신
+function handleIce(data){ 
+    console.log("sent candidate");                         
+    socket.emit("ice", data.candidate, roomName);          // candidate 전송 
+}
+
+function handleAddStream(data){
+    peerFace.srcObject = data.stream;                      // stream 받음 
 }
 
 muteBtn.addEventListener("click", handleMuteClick);
