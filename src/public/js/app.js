@@ -86,14 +86,15 @@ async function handleCameraChange(){
     await getMedia(camerasSelect.value);
 }
 
-function handleWelcomeSubmit(event){
+async function handleWelcomeSubmit(event){
     event.preventDefault();
-    socket.emit("join_room", input.value, startMedia); // on → emit(구체적)
+    await initCall();                      // getUserMedia, makeConnection | P2P connection 생성
+    socket.emit("join_room", input.value); // on → emit(구체화)
     roomName = input.value;
     input.value="";
 }
 
-async function startMedia(){
+async function initCall(){
     welcome.hidden = true; //숨기기
     call.hidden = false;   //보이기
     await getMedia();
@@ -102,22 +103,29 @@ async function startMedia(){
 
 //Peer A
 socket.on("welcome", async () => {
-    const offer = await myPeerConnection.createOffer(); // 3. createOffer | offer 생성
-    myPeerConnection.setLocalDescription(offer);        // 4. setLocalDescription | offer로 연결구성
+    const offer = await myPeerConnection.createOffer();    // 3. createOffer | offer 생성
+    myPeerConnection.setLocalDescription(offer);           // 4. setLocalDescription | offer로 연결구성
     console.log("sent the offer");
-    socket.emit("offer", offer, roomName);              // 5. Peer B에 offer 전송
-})
+    socket.emit("offer", offer, roomName);                 // 5. Peer B에 offer 전송
+}) 
 
 //Peer B
-socket.on("offer", (offer) => {
-    console.log(offer);                                 // 6. Peer B offer 받음 → signaling offer 주고받은 이후 P2P 대화가능
+socket.on("offer", async (offer) => {                      // 6. Peer B offer 받음 
+    myPeerConnection.setRemoteDescription(offer);          // 7. setRemoteDescription | offer 받아 세팅
+    const answer = await myPeerConnection.createAnswer();  // 8. createAnswer | offer 받고 answer 생성
+    myPeerConnection.setLocalDescription(answer);          // 9. setLocalDescription | answer로 연결구성
+    console.log("sent the answer");
+    socket.emit("answer", answer, roomName);               // 10. Peer A에 answer 전송
 })
 
+//Peer A
+socket.on("answer", async (answer) => {                    // 11. Peer A answer 받음 
+    myPeerConnection.setRemoteDescription(offer);          // 12. setRemoteDescription | answer 받아 세팅
+})                                                         //// signaling server(Socket.IO): offer & answer 주고받은 이후 P2P 대화가능 ////
 
 function makeConnection(){
-    myPeerConnection = new RTCPeerConnection(); // 1. P2P connection 생성
+    myPeerConnection = new RTCPeerConnection();            // 1. P2P connection 생성
     myStream.getTracks().forEach( (track) => myPeerConnection.addTrack(track, myStream)); // 2. addStream | (카메라,마이크) 데이터stream 연결에 넣음
-
 }
 
 muteBtn.addEventListener("click", handleMuteClick);
