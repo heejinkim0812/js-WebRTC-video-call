@@ -8,7 +8,6 @@ const welcome = document.getElementById("welcome");
 const call = document.getElementById("call");
 const welcomeForm = document.querySelector("form");
 const input = welcomeForm.querySelector("input");
-const peerFace = document.getElementById("peerFace");
 
 let myStream;
 let muted = false; 
@@ -27,7 +26,7 @@ async function getCameras(){
             const option = document.createElement("option");
             option.value = camera.deviceId;
             option.innerText = camera.label;
-            if(currentCamera.label === option.lebel){
+            if(currentCamera.label === camera.label){
                 option.selected = true;
             }
             camerasSelect.appendChild(option); //option 그리기
@@ -56,7 +55,7 @@ async function getMedia(deviceId) {
         if (!deviceId) {
             await getCameras(); //cameras 생성이전 딱 한번만 실행 (처음접속)
         }
-    } catch (e) { //오류발생시 예외처리
+    } catch (e) { 
         console.log(e);
     }
 }
@@ -85,6 +84,12 @@ function handleCameraClick() {
 
 async function handleCameraChange(){
     await getMedia(camerasSelect.value);
+    // 보내는 stream track 변경
+    if(myPeerConnection){
+        const videoTrack = myStream.getVideoTracks()[0];
+        const videoSender = myPeerConnection.getSenders().find( (sender) => sender.track.kind === "video" ); // Sender: peer에게 보낼 track 컨트롤
+        videoSender.replaceTrack(videoTrack); // video track 바꿔줌(타브라우저 update) 
+    }
 }
 
 async function initCall(){
@@ -123,20 +128,35 @@ socket.on("offer", async (offer) => {
 //Peer A
 socket.on("answer", async (answer) => {                    
     console.log("received the answer");                    // 11. Peer A answer 받음 
-    myPeerConnection.setRemoteDescription(offer);          // 12. setRemoteDescription | answer 받아 세팅
+    myPeerConnection.setRemoteDescription(answer);          // 12. setRemoteDescription | answer 받아 세팅
 })                                                         //////signaling server(Socket.IO): offer & answer 주고받은 이후 P2P 대화가능//////
 
 // candidate 수신
-socket.on("ice", async (ice) => {                          
+socket.on("ice", (ice) => {                          
     console.log("received candidate");                     // candidate 받음
     myPeerConnection.addIceCandidate(ice);                 // addIceCandidate event 발생
 })
 
 function makeConnection(){
-    myPeerConnection = new RTCPeerConnection();                      // 1. P2P connection 생성
-    myPeerConnection.addEventListener("icecandidate", handleIce);    // icecandidate event 발생 | candidate(소통방식) 주고받음
-    myPeerConnection.addEventListener("addstream", handleAddStream); // addstream evnet 발생 | stream 주고받음
-    myStream.getTracks().forEach( (track) => myPeerConnection.addTrack(track, myStream)); // 2. addStream | (카메라,마이크)데이터스트림 연결에 넣음
+    myPeerConnection = new RTCPeerConnection({                         // 1. P2P connection 생성
+        // stun서버(공용IP주소 찾아주는) 구축대신 구글무료서버 이용
+        iceServers: [
+            {
+                urls: [
+                    "stun:stun.l.google.com:19302",
+                    "stun:stun1.l.google.com:19302",
+                    "stun:stun2.l.google.com:19302",
+                    "stun:stun3.l.google.com:19302",
+                    "stun:stun4.l.google.com:19302",
+                ],
+            },
+        ],
+    });                                                                 
+    myPeerConnection.addEventListener("icecandidate", handleIce);      // icecandidate event 발생 | candidate(소통방식) 주고받음
+    myPeerConnection.addEventListener("addstream", handleAddStream);   // addstream evnet 발생 | stream 주고받음
+    myStream
+     .getTracks()
+     .forEach( (track) => myPeerConnection.addTrack(track, myStream)); // 2. addStream | (카메라,마이크) 데이터스트림 connection에 넣음
 }
 
 // candidate 발신
@@ -146,6 +166,7 @@ function handleIce(data){
 }
 
 function handleAddStream(data){
+    const peerFace = document.getElementById("peerFace");
     peerFace.srcObject = data.stream;                      // stream 받음 
 }
 
