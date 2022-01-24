@@ -6,8 +6,8 @@ const cameraBtn = document.getElementById("camera");
 const camerasSelect = document.getElementById("cameras");
 const welcome = document.getElementById("welcome");
 const call = document.getElementById("call");
-const welcomeForm = document.querySelector("form");
-const input = welcomeForm.querySelector("input");
+const welcomeForm = document.getElementById("welcomeForm");
+const input = document.getElementById("welcomeInput");
 
 let myStream;
 let muted = false; 
@@ -71,7 +71,7 @@ async function getMedia(deviceId) {
 /* =================== CLIENT EVENT =================== */
 
 async function initCall(){
-    welcome.hidden = true; //숨기기
+    welcome.remove(); //숨기기
     call.hidden = false;   //보이기
     await getMedia();
     makeConnection();
@@ -89,10 +89,10 @@ function handleMuteClick() {
     myStream.getAudioTracks().forEach( (track) => (track.enabled = !track.enabled) ); //상태 반대로 전환
     if(!muted) {
         muted = true; //소리남 → 버튼클릭 후 음소거 → 음소거 해제 버튼
-        muteBtn.innerText = "음소거 해제"; 
+        muteBtn.innerText = "Unmute"; 
     }else {
         muted = false; //음소거 → 버튼 클릭 후 음소거 해제 → 음소거 버튼
-        muteBtn.innerText = "음소거 하기"; 
+        muteBtn.innerText = "Mute"; 
     }
 }
 
@@ -118,10 +118,10 @@ async function handleCameraChange(){
 }
 
 
+welcomeForm.addEventListener("submit", handleWelcomeSubmit);
 muteBtn.addEventListener("click", handleMuteClick);
 cameraBtn.addEventListener("click", handleCameraClick);
 camerasSelect.addEventListener("input", handleCameraChange);
-welcomeForm.addEventListener("submit", handleWelcomeSubmit);
 
 
 
